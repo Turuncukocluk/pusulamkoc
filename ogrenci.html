@@ -533,7 +533,7 @@ function listenTasks(){
     if(!enc){_cTasks=[];updTaskUI();return;}
     try{
       const d=xD(enc,syncCfg.encKey);
-      if(data){_cTasks=Object.entries(data).map(([id,t])=>({...t,id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
+      if(d){_cTasks=Object.entries(d).map(([id,t])=>({...t,id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
       else _cTasks=[];
     }catch{_cTasks=[];}
     updTaskUI();
