@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1208">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pusulam">
+<title>Pusulam – Öğrenci</title>
+<style>
+:root{--o:#F47B20;--g:#D4A853;--dk:#1a1208;--cr:#fdf8f2;--tx:#3d2c10;--gr:#8a7a6a;--sh:0 4px 20px rgba(244,123,32,.1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:-webkit-fill-available}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--cr);color:var(--tx);min-height:100vh;min-height:-webkit-fill-available;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit}
+.header{background:linear-gradient(135deg,var(--dk),#3d2000);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.logo{font-family:Georgia,serif;font-size:1.15rem;font-weight:900;color:#fff}.logo span{color:var(--o)}
+.card{background:#fff;border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:var(--sh)}
+.btn{padding:12px 24px;border-radius:50px;border:none;font-weight:800;font-size:.9rem;cursor:pointer;transition:all .2s}
+.btn-o{background:var(--o);color:#fff}.btn-full{width:100%;text-align:center}
+.inp{width:100%;padding:10px 12px;border:2px solid #f0e8dc;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;background:var(--cr)}.inp:focus{border-color:var(--o)}
+.textarea{width:100%;padding:12px;border:2px solid #f0e8dc;border-radius:12px;font-size:14px;outline:none;resize:vertical;box-sizing:border-box;background:var(--cr);min-height:80px}
+.label{font-size:.72rem;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-10px);background:var(--dk);color:#fff;padding:10px 20px;border-radius:50px;font-weight:700;font-size:.82rem;z-index:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--dk);display:flex;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding-bottom:env(safe-area-inset-bottom)}
+.bnav button{flex:1;padding:10px 2px 8px;background:none;border:none;color:rgba(255,255,255,.4);font-size:.52rem;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;text-transform:uppercase;letter-spacing:.2px;position:relative}
+.bnav button.active{color:var(--o)}
+.badge{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:#ef4444}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+<script>
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  FIREBASE CONFIG — KENDİ BİLGİLERİNİZİ GİRİN            ║
+// ╚═══════════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey: "AIzaSyBLdrgo3zC1Fij3kOqA11hzm-nDZ0q2lnM",
+  authDomain: "pusulam-a883b.firebaseapp.com",
+  databaseURL: "https://pusulam-a883b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pusulam-a883b",
+  storageBucket: "pusulam-a883b.firebasestorage.app",
+  messagingSenderId: "877705081093",
+  appId: "1:877705081093:web:f5c4a77af516522e00476c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+// ═══════════════════════════════════════════════════════════
+// STORAGE & ŞİFRELEME
+// ═══════════════════════════════════════════════════════════
+const LOCAL={
+  get(k){try{return JSON.parse(localStorage.getItem('ya_'+k));}catch{return null;}},
+  set(k,v){try{localStorage.setItem('ya_'+k,JSON.stringify(v));}catch{}}
+};
+const SALT="pusulam2026";
+function xorEnc(t,key){const k=key+SALT;let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(unescape(encodeURIComponent(r)));}
+function xorDec(e,key){try{const k=key+SALT;const t=decodeURIComponent(escape(atob(e)));let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return r;}catch{return null;}}
+
+// Firebase CRUD (şifreli)
+const FB={
+  async set(path,val,encKey){try{const enc=xorEnc(JSON.stringify(val),encKey);await db.ref(path).set(enc);return true;}catch(e){console.error('FB set:',e);return false;}},
+  async get(path,encKey){try{const snap=await db.ref(path).once('value');const enc=snap.val();if(!enc)return null;const dec=xorDec(enc,encKey);return dec?JSON.parse(dec):null;}catch(e){console.error('FB get:',e);return null;}},
+  async remove(path){try{await db.ref(path).remove();}catch{}},
+  onValue(path,encKey,cb){return db.ref(path).on('value',snap=>{const enc=snap.val();if(!enc){cb(null);return;}try{const dec=xorDec(enc,encKey);cb(dec?JSON.parse(dec):null);}catch{cb(null);}});}
+};
+
+// ═══════════════════════════════════════════════════════════
+// TARİH
+// ═══════════════════════════════════════════════════════════
+const DAYS=["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
+function gwk(off=0){const d=new Date();const g=d.getDay();d.setDate(d.getDate()-(g===0?6:g-1)+off*7);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function gwd(off=0){const dates=[];const d=new Date();const g=d.getDay();d.setDate(d.getDate()-(g===0?6:g-1)+off*7);for(let i=0;i<7;i++){dates.push(new Date(d));d.setDate(d.getDate()+1);}return dates;}
+function ldk(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmt(s){return new Date(s+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});}
+
+function genCode(){const ch="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let c="";for(let i=0;i<8;i++)c+=ch[Math.floor(Math.random()*ch.length)];return c.slice(0,4)+"-"+c.slice(4);}
+function genSecret(){const ch="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";let s="";for(let i=0;i<16;i++)s+=ch[Math.floor(Math.random()*ch.length)];return s;}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC ENGINE
+// ═══════════════════════════════════════════════════════════
+const SYNC_KEYS=["profil","hedef","denemeler","hayallerim","ihtiyaclarim","notlar","evals","uyku_log","hatirlatma"];
+
+async function syncAll(sid,ek){
+  if(!sid||!ek)return 0;let c=0;
+  const allData={};
+  for(const k of SYNC_KEYS){const v=LOCAL.get(k);if(v!==null){allData[k]=v;c++;}}
+  for(let i=-15;i<=5;i++){const wk=gwk(i);const v=LOCAL.get('week_'+wk);if(v!==null){allData['week_'+wk]=v;c++;}}
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k?.startsWith('ya_degerlendirme_')){const sk=k.replace('ya_','');const v=LOCAL.get(sk);if(v){allData[sk]=v;c++;}}}
+  const today=new Date().toISOString().slice(0,10);
+  const odak=LOCAL.get('odak_'+today);if(odak){allData['odak_'+today]=odak;c++;}
+  const pom=LOCAL.get('pom_'+today);if(pom){allData['pom_'+today]=pom;c++;}
+  // Tek seferde Firebase'e yaz
+  await FB.set(`students/${sid}`,allData,ek);
+  return c;
+}
+
+async function loadTasks(sid,ek){
+  const data=await FB.get(`tasks/${sid}`,ek);
+  if(!data)return[];
+  return Object.entries(data).map(([id,t])=>({...t,id,_key:id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+}
+
+// ═══════════════════════════════════════════════════════════
+// HAFTALIK PLAN
+// ═══════════════════════════════════════════════════════════
+function WeeklyPlan({onSync}){
+  const[wo,setWo]=useState(0);
+  const wd=gwd(wo);const wk=gwk(wo);
+  const[weekData,setWeekData]=useState(LOCAL.get('week_'+wk)||{});
+  const[score,setScore]=useState((LOCAL.get('week_'+wk)||{}).score||null);
+  useEffect(()=>{const d=LOCAL.get('week_'+gwk(wo))||{};setWeekData(d);setScore(d.score||null);},[wo]);
+
+  const updateTask=(dKey,idx,val)=>{const w=gwk(wo);const d=LOCAL.get('week_'+w)||{};if(!d[dKey])d[dKey]={tasks:['','','','','',''],checks:[false,false,false,false,false,false]};while(d[dKey].tasks.length<6)d[dKey].tasks.push('');d[dKey].tasks[idx]=val;LOCAL.set('week_'+w,d);setWeekData({...d});onSync();};
+  const toggleCheck=(dKey,idx)=>{const w=gwk(wo);const d=LOCAL.get('week_'+w)||{};if(!d[dKey])d[dKey]={tasks:['','','','','',''],checks:[false,false,false,false,false,false]};while(d[dKey].checks.length<6)d[dKey].checks.push(false);d[dKey].checks[idx]=!d[dKey].checks[idx];LOCAL.set('week_'+w,d);setWeekData({...d});onSync();};
+  const setWS=s=>{const w=gwk(wo);const d=LOCAL.get('week_'+w)||{};d.score=s;LOCAL.set('week_'+w,d);setWeekData({...d});setScore(s);onSync();};
+
+  return React.createElement('div',null,
+    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
+      React.createElement('button',{onClick:()=>setWo(w=>w-1),style:{width:36,height:36,borderRadius:'50%',border:'2px solid var(--o)',background:'none',color:'var(--o)',fontSize:'1.1rem',cursor:'pointer',fontWeight:900}},'‹'),
+      React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem'}},fmt(ldk(wd[0]))+' – '+fmt(ldk(wd[6]))),
+      React.createElement('button',{onClick:()=>setWo(w=>w+1),style:{width:36,height:36,borderRadius:'50%',border:'2px solid var(--o)',background:'none',color:'var(--o)',fontSize:'1.1rem',cursor:'pointer',fontWeight:900}},'›')),
+    wd.map((date,idx)=>{const dKey=ldk(date);const isT=dKey===ldk(new Date());const dd=weekData[dKey]||{tasks:['','','','','',''],checks:[false,false,false,false,false,false]};const tasks=dd.tasks||['','','','','',''];while(tasks.length<6)tasks.push('');const checks=dd.checks||[];
+      return React.createElement('div',{key:idx,style:{background:'#fff',borderRadius:16,padding:'12px 14px',marginBottom:8,borderLeft:`4px solid ${isT?'var(--o)':'var(--g)'}`,boxShadow:'0 2px 10px rgba(0,0,0,.04)'}},
+        React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem',color:isT?'var(--o)':'var(--tx)',marginBottom:8,display:'flex',justifyContent:'space-between'}},React.createElement('span',null,DAYS[idx]+(isT?' 📍':'')),React.createElement('span',{style:{fontWeight:600,fontSize:'.72rem',color:'var(--gr)'}},fmt(dKey))),
+        tasks.map((t,ti)=>React.createElement('div',{key:ti,style:{display:'flex',alignItems:'center',gap:8,marginBottom:5}},
+          React.createElement('input',{className:'inp',value:t,onChange:e=>updateTask(dKey,ti,e.target.value),placeholder:`Görev ${ti+1}...`,style:{flex:1,padding:'8px 10px',fontSize:'.85rem',minWidth:0}}),
+          React.createElement('button',{onClick:()=>toggleCheck(dKey,ti),style:{width:30,height:30,borderRadius:8,border:`2px solid ${checks[ti]?'#22c55e':'#ddd'}`,background:checks[ti]?'#22c55e':'none',color:checks[ti]?'#fff':'transparent',cursor:'pointer',fontWeight:900,fontSize:'.8rem',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}},checks[ti]?'✓':''))));
+    }),
+    React.createElement('div',{style:{background:'linear-gradient(135deg,var(--o),var(--g))',borderRadius:16,padding:14,marginTop:8,color:'#fff'}},
+      React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem',marginBottom:8}},'⭐ Haftalık Performans Puanım'),
+      React.createElement('div',{style:{display:'flex',gap:4,flexWrap:'wrap'}},[1,2,3,4,5,6,7,8,9,10].map(s=>React.createElement('button',{key:s,onClick:()=>setWS(s),style:{width:32,height:32,borderRadius:8,border:`2px solid ${score===s?'#fff':'rgba(255,255,255,.3)'}`,background:score===s?'#fff':'rgba(255,255,255,.15)',color:score===s?'var(--o)':'#fff',fontWeight:800,fontSize:'.85rem',cursor:'pointer'}},s)))));
+}
+
+// ═══════════════════════════════════════════════════════════
+// KOÇ GÖREVLERİ & GÜVENLİK & PROFİL (aynı yapıda)
+// ═══════════════════════════════════════════════════════════
+function CoachTasks({tasks}){
+  if(!tasks||!tasks.length)return React.createElement('div',{style:{textAlign:'center',color:'var(--gr)',padding:30}},React.createElement('div',{style:{fontSize:'2.5rem',marginBottom:12}},'📭'),React.createElement('div',{style:{fontWeight:700}},'Henüz görev gelmemiş'));
+  const p=tasks.filter(t=>!t.done),d=tasks.filter(t=>t.done);
+  return React.createElement('div',null,
+    p.length>0&&React.createElement('div',{style:{fontSize:'.72rem',fontWeight:800,color:'var(--o)',textTransform:'uppercase',marginBottom:8}},'Yapılacaklar ('+p.length+')'),
+    p.map((t,i)=>React.createElement('div',{key:i,style:{background:'#fff',borderRadius:14,padding:'14px 16px',marginBottom:8,borderLeft:'4px solid var(--o)'}},React.createElement('div',{style:{fontSize:'.88rem',fontWeight:700}},t.text),React.createElement('div',{style:{fontSize:'.7rem',color:'var(--gr)',marginTop:4}},(t.sentBy||'')+' · '+new Date(t.createdAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})))),
+    d.length>0&&React.createElement('div',null,React.createElement('div',{style:{fontSize:'.72rem',fontWeight:800,color:'#22c55e',textTransform:'uppercase',marginTop:16,marginBottom:8}},'Tamamlananlar ('+d.length+')'),
+      d.map((t,i)=>React.createElement('div',{key:i,style:{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:6,borderLeft:'4px solid #22c55e',opacity:.6}},React.createElement('div',{style:{fontSize:'.82rem',fontWeight:600,color:'#22c55e',textDecoration:'line-through'}},t.text)))));
+}
+
+function SecurityInfo({config}){
+  const[show,setShow]=useState(false);const[cc,setCc]=useState(false);const[cs,setCs]=useState(false);
+  return React.createElement('div',{className:'card'},
+    React.createElement('div',{onClick:()=>setShow(!show),style:{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}},React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem'}},'🔒 Güvenlik & Koç Bağlantısı'),React.createElement('span',{style:{color:'var(--gr)'}},show?'▲':'▼')),
+    show&&React.createElement('div',{style:{marginTop:14}},
+      React.createElement('div',{style:{background:'linear-gradient(135deg,#1a1208,#3d2000)',borderRadius:16,padding:16,marginBottom:12,color:'#fff'}},
+        React.createElement('div',{style:{fontSize:'.72rem',fontWeight:800,color:'rgba(255,255,255,.5)',marginBottom:10,textAlign:'center'}},'Bu bilgileri koçuna ver:'),
+        React.createElement('div',{style:{display:'flex',gap:8}},
+          React.createElement('div',{style:{flex:1,background:'rgba(255,255,255,.08)',borderRadius:12,padding:12,textAlign:'center'}},React.createElement('div',{style:{fontSize:'.6rem',fontWeight:800,color:'rgba(255,255,255,.4)',textTransform:'uppercase',marginBottom:4}},'Eşleşme Kodu'),React.createElement('div',{onClick:()=>{try{navigator.clipboard.writeText(config?.pairCode||'');setCc(true);setTimeout(()=>setCc(false),2000);}catch{}},style:{fontFamily:'monospace',fontSize:'1.2rem',fontWeight:900,color:'var(--o)',letterSpacing:2,cursor:'pointer'}},config?.pairCode||'—'),React.createElement('div',{style:{fontSize:'.6rem',color:'rgba(255,255,255,.35)',marginTop:4}},cc?'✅ Kopyalandı!':'Tıkla→Kopyala')),
+          React.createElement('div',{style:{flex:1,background:'rgba(255,255,255,.08)',borderRadius:12,padding:12,textAlign:'center'}},React.createElement('div',{style:{fontSize:'.6rem',fontWeight:800,color:'rgba(255,255,255,.4)',textTransform:'uppercase',marginBottom:4}},'Gizli Anahtar'),React.createElement('div',{onClick:()=>{try{navigator.clipboard.writeText(config?.secret||'');setCs(true);setTimeout(()=>setCs(false),2000);}catch{}},style:{fontFamily:'monospace',fontSize:'.78rem',fontWeight:900,color:'var(--g)',letterSpacing:1,cursor:'pointer',wordBreak:'break-all'}},config?.secret||'—'),React.createElement('div',{style:{fontSize:'.6rem',color:'rgba(255,255,255,.35)',marginTop:4}},cs?'✅ Kopyalandı!':'Tıkla→Kopyala'))),
+        React.createElement('div',{style:{fontSize:'.68rem',color:'rgba(255,255,255,.5)',textAlign:'center',lineHeight:1.5,marginTop:10}},'⚠️ Gizli anahtarı sadece koçunla paylaş. Veriler bu anahtarla şifrelenir.'))));
+}
+
+function ProfilePage({config,onSync,showToast}){
+  const[profil,setProfil]=useState(LOCAL.get('profil')||{});
+  const[notlar,setNotlar]=useState(LOCAL.get('notlar')||'');
+  const[sinif,setSinif]=useState(profil.sinif||'');
+  return React.createElement('div',null,
+    React.createElement('div',{className:'card',style:{textAlign:'center',padding:20}},
+      React.createElement('div',{style:{width:70,height:70,borderRadius:'50%',background:'linear-gradient(135deg,var(--o),var(--g))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2rem',color:'#fff',margin:'0 auto 12px',fontWeight:900}},(profil.ad||'?')[0]),
+      React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.3rem',fontWeight:700}},profil.ad||'Öğrenci'),
+      React.createElement('div',{style:{fontSize:'.82rem',color:'var(--gr)',marginTop:2}},(sinif?(sinif==='mezun'?'Mezun':sinif+'. Sınıf'):'')+(profil.adres?' · '+profil.adres:''))),
+    React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem',color:'var(--o)',marginBottom:14}},'Profil Bilgileri'),
+      React.createElement('div',{style:{marginBottom:12}},React.createElement('label',{className:'label'},'Ad Soyad'),React.createElement('input',{className:'inp',value:profil.ad||'',onChange:e=>setProfil({...profil,ad:e.target.value})})),
+      React.createElement('div',{style:{marginBottom:12}},React.createElement('label',{className:'label'},'Sınıf'),React.createElement('div',{style:{display:'flex',gap:6,flexWrap:'wrap'}},['9','10','11','12','mezun'].map(s=>React.createElement('button',{key:s,onClick:()=>setSinif(s),style:{padding:'8px 14px',borderRadius:12,border:`2px solid ${sinif===s?'var(--o)':'#f0e8dc'}`,background:sinif===s?'var(--o)':'#fff',color:sinif===s?'#fff':'var(--gr)',fontWeight:800,fontSize:'.82rem',cursor:'pointer'}},s==='mezun'?'🎓 Mezun':s+'. Sınıf')))),
+      React.createElement('div',{style:{marginBottom:14}},React.createElement('label',{className:'label'},'İl / İlçe'),React.createElement('input',{className:'inp',value:profil.adres||'',onChange:e=>setProfil({...profil,adres:e.target.value}),placeholder:'Örn: Konya / Selçuklu'})),
+      React.createElement('button',{className:'btn btn-o btn-full',onClick:()=>{const p={...profil,sinif};LOCAL.set('profil',p);setProfil(p);onSync();showToast('✅ Kaydedildi!');}},'💾 Kaydet & Senkronize Et')),
+    React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem',color:'var(--o)',marginBottom:12}},'📝 Notlarım'),
+      React.createElement('textarea',{className:'textarea',value:notlar,onChange:e=>setNotlar(e.target.value),placeholder:'Serbest notlarını yaz...',rows:5}),
+      React.createElement('button',{className:'btn btn-o btn-full',style:{marginTop:10},onClick:()=>{LOCAL.set('notlar',notlar);onSync();showToast('📝 Kaydedildi!');}},'💾 Kaydet')),
+    React.createElement(SecurityInfo,{config}));
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANA UYGULAMA
+// ═══════════════════════════════════════════════════════════
+function App(){
+  const[phase,setPhase]=useState('loading');
+  const[config,setConfig]=useState(null);
+  const[syncing,setSyncing]=useState(false);
+  const[lastSync,setLastSync]=useState(null);
+  const[coachTasks,setCoachTasks]=useState([]);
+  const[toast,setToast]=useState('');
+  const[tab,setTab]=useState('home');
+  const[setupName,setSetupName]=useState('');
+  const[connected,setConnected]=useState(false);
+
+  const showToast=m=>{setToast(m);setTimeout(()=>setToast(''),2500);};
+
+  // Firebase bağlantı kontrolü
+  useEffect(()=>{
+    db.ref('.info/connected').on('value',snap=>{setConnected(!!snap.val());});
+  },[]);
+
+  useEffect(()=>{const cfg=LOCAL.get('_sync_config');if(cfg){setConfig(cfg);setPhase('app');}else setPhase('setup');},[]);
+
+  const handleSetup=async()=>{
+    if(!setupName.trim())return;
+    const sid='stu_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+    const pairCode=genCode();const secret=genSecret();
+    const encKey=secret+'_'+pairCode;
+    // Firebase'e kayıt bilgisi yaz
+    await FB.set(`registrations/${pairCode}`,{studentId:sid,name:setupName.trim(),pairCode,secret,registeredAt:new Date().toISOString()},encKey);
+    LOCAL.set('profil',{ad:setupName.trim()});
+    LOCAL.set('_sync_config',{studentId:sid,pairCode,secret,encKey});
+    setConfig({studentId:sid,pairCode,secret,encKey});setPhase('app');
+    setTimeout(()=>doSync({studentId:sid,pairCode,secret,encKey}),500);
+  };
+
+  const doSync=async cfg=>{
+    const c=cfg||config;if(!c)return;setSyncing(true);
+    try{
+      await syncAll(c.studentId,c.encKey);
+      const tasks=await loadTasks(c.studentId,c.encKey);
+      setCoachTasks(tasks);setLastSync(new Date().toISOString());
+    }catch(e){console.error('Sync error:',e);}
+    setSyncing(false);
+  };
+
+  // Koç görevlerini realtime dinle
+  useEffect(()=>{
+    if(phase!=='app'||!config)return;
+    doSync();
+    const unsub=db.ref(`tasks/${config.studentId}`).on('value',snap=>{
+      const enc=snap.val();if(!enc){setCoachTasks([]);return;}
+      try{const dec=xorDec(enc,config.encKey);const data=dec?JSON.parse(dec):null;
+        if(data){const list=Object.entries(data).map(([id,t])=>({...t,id,_key:id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));setCoachTasks(list);}
+      }catch{setCoachTasks([]);}
+    });
+    return()=>db.ref(`tasks/${config.studentId}`).off('value',unsub);
+  },[phase,config]);
+
+  // Periyodik sync
+  useEffect(()=>{if(phase!=='app'||!config)return;const iv=setInterval(()=>doSync(),30000);return()=>clearInterval(iv);},[phase,config]);
+
+  if(phase==='loading')return React.createElement('div',{style:{minHeight:'100vh',background:'#1a1208',display:'flex',alignItems:'center',justifyContent:'center'}},React.createElement('div',{style:{textAlign:'center',color:'#fff'}},React.createElement('div',{style:{fontSize:'3rem',marginBottom:16}},'🧭'),React.createElement('div',{style:{fontWeight:800}},'Yükleniyor...')));
+
+  if(phase==='setup')return React.createElement('div',{style:{minHeight:'100vh',background:'linear-gradient(145deg,#1a1208 0%,#3d2000 60%,#F47B20 100%)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
+    React.createElement('div',{style:{background:'#fff',borderRadius:28,padding:'32px 24px',maxWidth:380,width:'100%',textAlign:'center'}},
+      React.createElement('div',{style:{fontSize:'3rem',marginBottom:12}},'🧭'),
+      React.createElement('h1',{style:{fontFamily:'Georgia,serif',fontSize:'1.8rem',color:'#1a1208',marginBottom:4}},'Pusula',React.createElement('span',{style:{color:'#F47B20'}},'m')),
+      React.createElement('p',{style:{color:'#8a7a6a',fontSize:'.82rem',marginBottom:24}},'Koçunla bağlan, hedefine ulaş'),
+      React.createElement('input',{className:'inp',value:setupName,onChange:e=>setSetupName(e.target.value),placeholder:'Adın ve soyadın...',style:{marginBottom:16,fontSize:16}}),
+      React.createElement('button',{className:'btn btn-o btn-full',onClick:handleSetup,disabled:!setupName.trim()},'Başlayalım →')));
+
+  // MAIN
+  const profil=LOCAL.get('profil')||{};const hedef=LOCAL.get('hedef')||{};const denemeler=LOCAL.get('denemeler')||[];
+  const weekDates=gwd(0);const wKey=gwk(0);const weekData=LOCAL.get('week_'+wKey)||{};
+  let weekDone=0,weekTotal=0;weekDates.forEach(date=>{const dKey=ldk(date);const dd=weekData[dKey]||{};(dd.tasks||[]).forEach((t,i)=>{if(t?.trim()){weekTotal++;if((dd.checks||[])[i])weekDone++;}});});
+  const pending=coachTasks.filter(t=>!t.done);
+
+  const TABS=[{id:'home',label:'Ana Sayfa',icon:'🏠'},{id:'plan',label:'Hafta',icon:'📅'},{id:'gorev',label:'Görevler'+(pending.length>0?' ('+pending.length+')':''),icon:'📥'},{id:'profil',label:'Profil',icon:'👤'}];
+
+  return React.createElement('div',{style:{minHeight:'100vh',background:'var(--cr)',paddingBottom:80}},
+    React.createElement('div',{className:'header'},
+      React.createElement('div',{className:'logo'},'Pusula',React.createElement('span',null,'m'),React.createElement('span',{style:{fontSize:'.5rem',marginLeft:6,color:connected?'#22c55e':'#ef4444'}},'●')),
+      React.createElement('button',{onClick:()=>doSync(),disabled:syncing,style:{display:'flex',alignItems:'center',gap:6,background:'rgba(244,123,32,.1)',border:'1.5px solid rgba(244,123,32,.3)',borderRadius:20,padding:'5px 12px',cursor:syncing?'default':'pointer'}},
+        React.createElement('span',{style:{fontSize:'.75rem',fontWeight:800,color:'var(--o)'}},syncing?'⏳ Senkronize...':'🔄 Senkronize Et'),
+        lastSync&&!syncing&&React.createElement('span',{style:{fontSize:'.6rem',color:'var(--gr)'}},'('+new Date(lastSync).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+')'))),
+
+    React.createElement('div',{style:{padding:'16px 16px 20px',maxWidth:480,margin:'0 auto'}},
+      tab==='home'&&React.createElement('div',null,
+        React.createElement('div',{style:{background:'linear-gradient(135deg,#1a1208,#5a3300)',borderRadius:20,padding:'20px 18px',marginBottom:16,color:'#fff'}},
+          React.createElement('div',{style:{fontSize:'.82rem',color:'rgba(255,255,255,.6)',marginBottom:4}},'Merhaba! 👋'),
+          React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.5rem',fontWeight:900}},profil.ad||'Öğrenci'),
+          React.createElement('div',{style:{fontSize:'.78rem',color:'#D4A853',marginTop:6,fontWeight:600}},'📅 '+fmt(ldk(weekDates[0]))+' – '+fmt(ldk(weekDates[6]))+(weekTotal>0?' · '+weekDone+'/'+weekTotal+' görev':''))),
+        pending.length>0&&React.createElement('button',{onClick:()=>setTab('gorev'),style:{width:'100%',background:'linear-gradient(135deg,#fff8f0,#fff3e0)',borderRadius:16,padding:'14px 16px',marginBottom:14,border:'none',borderLeft:'4px solid var(--o)',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:10}},
+          React.createElement('span',{style:{fontSize:'1.4rem'}},'📥'),React.createElement('div',{style:{flex:1}},React.createElement('div',{style:{fontWeight:800,fontSize:'.88rem',color:'var(--o)'}},'Koçundan '+pending.length+' yeni görev!'),React.createElement('div',{style:{fontSize:'.72rem',color:'var(--gr)',marginTop:2}},'Görmek için tıkla')),React.createElement('span',{style:{color:'var(--o)',fontSize:'1.2rem'}},'→')),
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}},
+          [{v:weekDone+'/'+weekTotal,l:'Görev',c:'var(--o)'},{v:denemeler.length,l:'Deneme',c:'var(--o)'},{v:weekData.score||'-',l:'Puan',c:weekData.score>=8?'#22c55e':'var(--o)'}].map((s,i)=>React.createElement('div',{key:i,className:'card',style:{textAlign:'center',padding:'14px 10px'}},React.createElement('div',{style:{fontSize:'1.4rem',fontWeight:900,color:s.c}},s.v),React.createElement('div',{style:{fontSize:'.62rem',color:'var(--gr)',fontWeight:700,textTransform:'uppercase',marginTop:3}},s.l)))),
+        hedef.okul&&React.createElement('div',{style:{background:'linear-gradient(135deg,#1a1208,#3d2000)',borderRadius:20,padding:16,marginBottom:16,color:'#fff'}},React.createElement('div',{style:{fontSize:'.68rem',fontWeight:800,color:'rgba(255,255,255,.4)',textTransform:'uppercase',marginBottom:4}},'Hedefim'),React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.1rem',fontWeight:900,color:'var(--o)'}},hedef.okul)),
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}},
+          [{i:'📅',l:'Haftalık Plan',t:'plan'},{i:'📥',l:'Koç Görevleri',t:'gorev'},{i:'👤',l:'Profilim',t:'profil'},{i:'🔄',l:'Senkronize Et',action:()=>doSync()}].map((a,i)=>React.createElement('button',{key:i,onClick:()=>a.action?a.action():setTab(a.t),style:{background:'#fff',borderRadius:16,padding:16,border:'none',cursor:'pointer',textAlign:'left',boxShadow:'0 2px 10px rgba(0,0,0,.04)',borderLeft:'4px solid var(--o)'}},React.createElement('div',{style:{fontSize:'1.6rem',marginBottom:4}},a.i),React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem'}},a.l)))),
+        React.createElement(SecurityInfo,{config})),
+      tab==='plan'&&React.createElement(WeeklyPlan,{onSync:()=>doSync()}),
+      tab==='gorev'&&React.createElement('div',null,React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.1rem',fontWeight:700,color:'var(--o)',marginBottom:14}},'📥 Koçumdan Gelen Görevler'),React.createElement(CoachTasks,{tasks:coachTasks})),
+      tab==='profil'&&React.createElement(ProfilePage,{config,onSync:()=>doSync(),showToast})),
+
+    React.createElement('div',{className:'bnav'},TABS.map(t=>React.createElement('button',{key:t.id,className:tab===t.id?'active':'',onClick:()=>setTab(t.id)},React.createElement('span',{style:{fontSize:'1.2rem'}},t.icon),t.label,t.id==='gorev'&&pending.length>0&&React.createElement('div',{className:'badge'})))),
+    React.createElement('div',{className:`toast ${toast?'show':''}`},toast));
+}
+
+ReactDOM.render(React.createElement(App),document.getElementById('app'));
+</script>
+</body>
+</html>

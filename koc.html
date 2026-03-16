@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1208">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pusulam Koç">
+<title>Pusulam – Koç Paneli</title>
+<style>
+:root{--o:#F47B20;--g:#D4A853;--dk:#1a1208;--cr:#fdf8f2;--tx:#3d2c10;--gr:#8a7a6a;--sh:0 4px 20px rgba(244,123,32,.1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:-webkit-fill-available}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--cr);color:var(--tx);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit}
+.header{background:linear-gradient(135deg,var(--dk),#3d2000);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.logo{font-family:Georgia,serif;font-size:1.15rem;font-weight:900;color:#fff}.logo span{color:var(--o)}
+.card{background:#fff;border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:var(--sh)}
+.btn{padding:12px 24px;border-radius:50px;border:none;font-weight:800;font-size:.9rem;cursor:pointer;transition:all .2s}
+.btn-o{background:var(--o);color:#fff}.btn-full{width:100%;text-align:center}
+.inp{width:100%;padding:10px 12px;border:2px solid #f0e8dc;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;background:var(--cr)}.inp:focus{border-color:var(--o)}
+.textarea{width:100%;padding:12px;border:2px solid #f0e8dc;border-radius:12px;font-size:14px;outline:none;resize:vertical;box-sizing:border-box;background:var(--cr);min-height:80px}
+.label{font-size:.72rem;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block}
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-10px);background:var(--dk);color:#fff;padding:10px 20px;border-radius:50px;font-weight:700;font-size:.82rem;z-index:500;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.tab-bar{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.tab-bar::-webkit-scrollbar{display:none}
+.tab-btn{padding:7px 12px;border-radius:12px;border:2px solid #f0e8dc;background:#fff;color:var(--gr);font-weight:800;font-size:.72rem;cursor:pointer;white-space:nowrap;flex-shrink:0}.tab-btn.active{border-color:var(--o);background:var(--o);color:#fff}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;backdrop-filter:blur(4px)}
+.modal{background:#fff;border-radius:28px 28px 0 0;padding:24px 20px 40px;width:100%;max-height:90vh;overflow-y:auto}
+.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:90}
+.sidebar{position:fixed;top:52px;bottom:0;left:0;z-index:95;width:290px;background:#fff;border-right:1px solid #f0e8dc;overflow-y:auto;transform:translateX(-100%);transition:transform .3s}.sidebar.open{transform:translateX(0)}
+.ai-result{font-size:.85rem;color:var(--tx);line-height:1.8;white-space:pre-line}
+@keyframes dotPulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.dot-pulse{display:flex;justify-content:center;gap:6px;margin-top:12px}.dot-pulse span{width:8px;height:8px;border-radius:50%;background:var(--o);animation:dotPulse 1.2s infinite}.dot-pulse span:nth-child(2){animation-delay:.2s}.dot-pulse span:nth-child(3){animation-delay:.4s}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+<script>
+// ╔═══════════════════════════════════════════════════════════╗
+// ║  FIREBASE CONFIG — KENDİ BİLGİLERİNİZİ GİRİN            ║
+// ║  (Öğrenci uygulamasıyla AYNI config olmalı!)              ║
+// ╚═══════════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey: "AIzaSyBLdrgo3zC1Fij3kOqA11hzm-nDZ0q2lnM",
+  authDomain: "pusulam-a883b.firebaseapp.com",
+  databaseURL: "https://pusulam-a883b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pusulam-a883b",
+  storageBucket: "pusulam-a883b.firebasestorage.app",
+  messagingSenderId: "877705081093",
+  appId: "1:877705081093:web:f5c4a77af516522e00476c"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+// ═══════════════════════════════════════════════════════════
+// ŞİFRELEME & FIREBASE
+// ═══════════════════════════════════════════════════════════
+const SALT="pusulam2026";
+function xorEnc(t,key){const k=key+SALT;let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(unescape(encodeURIComponent(r)));}
+function xorDec(e,key){try{const k=key+SALT;const t=decodeURIComponent(escape(atob(e)));let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return r;}catch{return null;}}
+
+const FB={
+  async set(path,val,encKey){try{await db.ref(path).set(xorEnc(JSON.stringify(val),encKey));return true;}catch{return false;}},
+  async get(path,encKey){try{const snap=await db.ref(path).once('value');const enc=snap.val();if(!enc)return null;const dec=xorDec(enc,encKey);return dec?JSON.parse(dec):null;}catch{return null;}},
+};
+
+const LS={get(k){try{return JSON.parse(localStorage.getItem('pk_'+k));}catch{return null;}},set(k,v){try{localStorage.setItem('pk_'+k,JSON.stringify(v));}catch{}}};
+
+const DAYS=["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"];
+function gwk(off=0){const d=new Date();const g=d.getDay();d.setDate(d.getDate()-(g===0?6:g-1)+off*7);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function gwd(off=0){const r=[];const d=new Date();const g=d.getDay();d.setDate(d.getDate()-(g===0?6:g-1)+off*7);for(let i=0;i<7;i++){r.push(new Date(d));d.setDate(d.getDate()+1);}return r;}
+function ldk(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmt(s){return new Date(s+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});}
+function calcNet(d,y){return+(d-y/3).toFixed(2);}
+
+// ═══════════════════════════════════════════════════════════
+// ÖĞRENCİ VERİSİ YÜKLEME (Firebase'den şifreli okuma)
+// ═══════════════════════════════════════════════════════════
+async function fetchStudent(stu){
+  if(!stu?.id||!stu?.encKey)return{};
+  return await FB.get(`students/${stu.id}`,stu.encKey)||{};
+}
+async function fetchTasks(stu){
+  if(!stu?.id||!stu?.encKey)return[];
+  const data=await FB.get(`tasks/${stu.id}`,stu.encKey);
+  if(!data)return[];
+  return Object.entries(data).map(([id,t])=>({...t,id,_key:id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI KOÇ
+// ═══════════════════════════════════════════════════════════
+function AITab({sd,name,coachName,profil,hedef,denemeler,scores,uykuLog,weekData,weekDone,weekTotal,gorevler}){
+  const[res,setRes]=useState(null);const[loading,setLoading]=useState(false);const[active,setActive]=useState(null);const[customQ,setCustomQ]=useState("");const[hist,setHist]=useState([]);
+  const ctx=()=>{let c=`Öğrenci: ${name}\n`;if(profil.sinif)c+=`Sınıf: ${profil.sinif==='mezun'?'Mezun':profil.sinif+'. Sınıf'}\n`;if(hedef.okul)c+=`Hedef: ${hedef.okul}${hedef.bolum?' / '+hedef.bolum:''}\n`;if(hedef.siralama)c+=`Sıralama: İlk ${hedef.siralama}\n`;c+=`Hafta: ${weekDone}/${weekTotal} görev`;if(weekData.score)c+=`, Puan: ${weekData.score}/10`;if(scores.length)c+=`\nPuanlar: ${scores.map(s=>s.score).join(',')} Ort:${(scores.reduce((a,b)=>a+b.score,0)/scores.length).toFixed(1)}`;if(weekData.summary)c+=`\nÖzet: ${weekData.summary}`;
+    if(denemeler.length){c+=`\nDenemeler(${denemeler.length}):\n`;denemeler.forEach((d,i)=>{const tip=(d.tip||'tyt').toUpperCase();const ks=tip==='TYT'?["mat","tur","tar","cog","fel","din","fiz","kim","bio"]:["mat","fiz","kim","bio","tdk","tar1","cog1"];let td=0,ty=0;ks.forEach(k=>{td+=d.dersler?.[k+'_d']||0;ty+=d.dersler?.[k+'_y']||0;});c+=`${tip}#${i+1}: ${td}D/${ty}Y=${calcNet(td,ty)}net`;if(d.konular)c+=` Yanlış:${d.konular}`;c+='\n';});}
+    const uV=Object.values(uykuLog||{}).filter(x=>typeof x==='number');if(uV.length)c+=`\nUyku: Ort ${(uV.reduce((a,b)=>a+b,0)/uV.length).toFixed(1)}s`;
+    if(sd?.hayallerim)c+=`\nHayalleri: ${sd.hayallerim}`;return c;};
+  const ask=async(type,q)=>{setLoading(true);setActive(type);const prompts={genel:`YKS koçusun. Analiz et: güçlü/zayıf, riskler, ${coachName||'Koç'}a 3-5 öneri. Türkçe.\n\n${ctx()}`,deneme:`Deneme analiz uzmanısın. Ders bazlı analiz, trend, plan öner. Türkçe.\n\n${ctx()}`,motivasyon:`Motivasyon uzmanısın. Puan trendi, uyku, tükenmişlik, strateji. Türkçe.\n\n${ctx()}`,plan:`Strateji uzmanısın. Haftalık plan, öncelik, süre. Türkçe.\n\n${ctx()}`,custom:`YKS koçusun. Yanıtla: "${q}"\n\n${ctx()}`};
+    try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompts[type]||prompts.genel}]})});const data=await r.json();const text=data?.content?.[0]?.text?.trim();
+      if(text){const r2={type,text,timestamp:new Date().toISOString(),question:q||null};setRes(r2);setHist(p=>[r2,...p].slice(0,10));}else throw 0;
+    }catch{setRes({type:'error',text:'⚠️ AI yanıt veremedi.',timestamp:new Date().toISOString()});}setLoading(false);};
+  const labels={genel:'📊 Genel',deneme:'📝 Deneme',motivasyon:'💪 Motivasyon',plan:'📅 Plan',custom:'💬 Özel'};
+  return React.createElement('div',null,
+    React.createElement('div',{style:{background:'linear-gradient(135deg,#1a1208,#3d2000)',borderRadius:20,padding:'18px 16px',marginBottom:16,color:'#fff'}},React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:8}},React.createElement('div',{style:{fontSize:'1.5rem'}},'🤖'),React.createElement('div',null,React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.1rem',fontWeight:900}},'AI Koç Asistanı'),React.createElement('div',{style:{fontSize:'.72rem',color:'rgba(255,255,255,.5)'}},name+' için analiz')))),
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}},
+      [{id:'genel',icon:'📊',l:'Genel Değerlendirme',c:'#F47B20'},{id:'deneme',icon:'📝',l:'Deneme Analizi',c:'#3b82f6'},{id:'motivasyon',icon:'💪',l:'Motivasyon',c:'#8b5cf6'},{id:'plan',icon:'📅',l:'Çalışma Planı',c:'#16a34a'}].map(s=>React.createElement('button',{key:s.id,onClick:()=>ask(s.id),disabled:loading,style:{background:'#fff',borderRadius:16,padding:14,border:`2px solid ${active===s.id&&loading?s.c:'#f0e8dc'}`,cursor:loading?'default':'pointer',textAlign:'left',opacity:loading&&active!==s.id?.5:1}},React.createElement('div',{style:{fontSize:'1.5rem',marginBottom:6}},s.icon),React.createElement('div',{style:{fontWeight:800,fontSize:'.82rem',color:s.c}},s.l),loading&&active===s.id&&React.createElement('div',{style:{marginTop:6,fontSize:'.7rem',color:s.c,fontWeight:700}},'⏳ Analiz...')))),
+    React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem',color:'var(--o)',marginBottom:10}},'💬 Özel Soru'),React.createElement('textarea',{className:'textarea',value:customQ,onChange:e=>setCustomQ(e.target.value),placeholder:'Örn: Mat netlerini nasıl artırır?',rows:3}),React.createElement('button',{className:'btn btn-o btn-full',style:{marginTop:10,opacity:customQ.trim()&&!loading?1:.5},onClick:()=>{if(customQ.trim())ask('custom',customQ.trim());},disabled:loading||!customQ.trim()},loading&&active==='custom'?'⏳...':'🤖 Sor')),
+    loading&&React.createElement('div',{style:{background:'linear-gradient(135deg,#fff8f0,#fff3e0)',borderRadius:20,padding:20,marginBottom:16,textAlign:'center',borderLeft:'4px solid var(--o)'}},React.createElement('div',{style:{fontSize:'2rem',marginBottom:8}},'🤖'),React.createElement('div',{style:{fontWeight:800,color:'var(--o)'}},'Analiz ediliyor...'),React.createElement('div',{className:'dot-pulse'},React.createElement('span'),React.createElement('span'),React.createElement('span'))),
+    res&&!loading&&React.createElement('div',{className:'card',style:{borderLeft:res.type==='error'?'4px solid #ef4444':'4px solid var(--o)'}},React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:12}},React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem',color:res.type==='error'?'#ef4444':'var(--o)'}},labels[res.type]||'🤖'),React.createElement('div',{style:{fontSize:'.62rem',color:'var(--gr)'}},new Date(res.timestamp).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}))),res.question&&React.createElement('div',{style:{background:'var(--cr)',borderRadius:10,padding:'8px 12px',marginBottom:12,fontSize:'.78rem',color:'var(--gr)'}},'❓ '+res.question),React.createElement('div',{className:'ai-result'},res.text)),
+    hist.length>1&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,fontSize:'.82rem',color:'var(--gr)',marginBottom:10}},'📜 Önceki'),hist.slice(1).map((h,i)=>React.createElement('button',{key:i,onClick:()=>setRes(h),style:{width:'100%',textAlign:'left',background:'var(--cr)',borderRadius:12,padding:'10px 14px',marginBottom:6,border:'none',cursor:'pointer'}},React.createElement('div',{style:{fontWeight:700,fontSize:'.78rem',color:'var(--o)'}},labels[h.type]),React.createElement('div',{style:{fontSize:'.72rem',color:'var(--tx)',marginTop:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},h.text.slice(0,80)+'...')))));
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANA UYGULAMA
+// ═══════════════════════════════════════════════════════════
+function App(){
+  const[phase,setPhase]=useState('loading');
+  const[coach,setCoach]=useState(null);const[students,setStudents]=useState([]);
+  const[activeIdx,setActiveIdx]=useState(-1);const[sd,setSd]=useState({});
+  const[tab,setTab]=useState('ozet');const[wo,setWo]=useState(0);
+  const[adding,setAdding]=useState(false);const[sharing,setSharing]=useState(false);const[deleting,setDeleting]=useState(null);
+  const[taskText,setTaskText]=useState('');const[gorevler,setGorevler]=useState([]);
+  const[coachNote,setCoachNote]=useState('');const[syncing,setSyncing]=useState(false);const[lastSync,setLastSync]=useState(null);
+  const[toast,setToast]=useState('');const[sideOpen,setSideOpen]=useState(false);
+  const[coachName,setCoachName]=useState('');const[savedLink,setSavedLink]=useState('');const[connected,setConnected]=useState(false);
+
+  const showToast=m=>{setToast(m);setTimeout(()=>setToast(''),2500);};
+
+  useEffect(()=>{db.ref('.info/connected').on('value',s=>{setConnected(!!s.val());});},[]);
+  useEffect(()=>{const c=LS.get('profile');const s=LS.get('students')||[];const l=LS.get('app_link')||'';setSavedLink(l);if(c){setCoach(c);setStudents(s);if(s.length)setActiveIdx(0);setPhase('app');}else setPhase('setup');},[]);
+
+  const handleSetup=()=>{if(!coachName.trim())return;const c={name:coachName.trim()};LS.set('profile',c);setCoach(c);setPhase('app');};
+
+  const loadData=useCallback(async stu=>{
+    if(!stu?.encKey)return;setSyncing(true);
+    const data=await fetchStudent(stu);const tasks=await fetchTasks(stu);
+    setGorevler(tasks);const note=LS.get('note_'+stu.id);setCoachNote(note||'');
+    setSd(data);setLastSync(new Date().toISOString());setSyncing(false);
+  },[]);
+
+  useEffect(()=>{if(phase==='app'&&students[activeIdx])loadData(students[activeIdx]);},[phase,activeIdx,students]);
+
+  // Realtime listener for student data
+  useEffect(()=>{
+    if(phase!=='app'||!students[activeIdx])return;
+    const stu=students[activeIdx];
+    const ref=db.ref(`students/${stu.id}`);
+    const unsub=ref.on('value',snap=>{
+      const enc=snap.val();if(!enc)return;
+      try{const dec=xorDec(enc,stu.encKey);if(dec){setSd(JSON.parse(dec));setLastSync(new Date().toISOString());}}catch{}
+    });
+    return()=>ref.off('value',unsub);
+  },[phase,activeIdx,students]);
+
+  const addStudent=async stu=>{const u=[...students,stu];setStudents(u);LS.set('students',u);setActiveIdx(u.length-1);setAdding(false);showToast('✅ Bağlandı!');};
+  const removeStudent=idx=>{const n=students[idx]?.name;const u=students.filter((_,i)=>i!==idx);setStudents(u);LS.set('students',u);if(activeIdx===idx){setActiveIdx(u.length?Math.min(idx,u.length-1):-1);setSd({});}else if(activeIdx>idx)setActiveIdx(activeIdx-1);setDeleting(null);showToast('🗑 '+n+' çıkarıldı');};
+
+  const sendTask=async()=>{
+    const stu=students[activeIdx];if(!taskText.trim()||!stu)return;
+    const tid='t_'+Date.now();const task={id:tid,text:taskText.trim(),createdAt:new Date().toISOString(),done:false,sentBy:coach?.name||'Koç'};
+    // Mevcut görevleri al, yenisini ekle, toplu yaz
+    const existing=await FB.get(`tasks/${stu.id}`,stu.encKey)||{};
+    existing[tid]=task;
+    await FB.set(`tasks/${stu.id}`,existing,stu.encKey);
+    setGorevler(prev=>[{...task,_key:tid},...prev]);setTaskText('');showToast('📤 Gönderildi!');
+  };
+  const toggleDone=async g=>{const stu=students[activeIdx];if(!stu)return;const existing=await FB.get(`tasks/${stu.id}`,stu.encKey)||{};if(existing[g.id])existing[g.id].done=!existing[g.id].done;await FB.set(`tasks/${stu.id}`,existing,stu.encKey);setGorevler(prev=>prev.map(x=>x.id===g.id?{...x,done:!x.done}:x));};
+  const delGorev=async g=>{const stu=students[activeIdx];if(!stu)return;const existing=await FB.get(`tasks/${stu.id}`,stu.encKey)||{};delete existing[g.id];await FB.set(`tasks/${stu.id}`,existing,stu.encKey);setGorevler(prev=>prev.filter(x=>x.id!==g.id));showToast('🗑 Silindi');};
+  const saveNote=()=>{const s=students[activeIdx];if(!s)return;LS.set('note_'+s.id,coachNote);showToast('📝 Kaydedildi!');};
+
+  if(phase==='loading')return React.createElement('div',{style:{minHeight:'100vh',background:'#1a1208',display:'flex',alignItems:'center',justifyContent:'center'}},React.createElement('div',{style:{textAlign:'center',color:'#fff'}},React.createElement('div',{style:{fontSize:'3rem',marginBottom:16}},'🧭'),React.createElement('div',{style:{fontWeight:800}},'Yükleniyor...')));
+  if(phase==='setup')return React.createElement('div',{style:{minHeight:'100vh',background:'linear-gradient(145deg,#1a1208 0%,#3d2000 60%,#F47B20 100%)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}},React.createElement('div',{style:{background:'#fff',borderRadius:28,padding:'32px 24px',maxWidth:380,width:'100%',textAlign:'center'}},React.createElement('div',{style:{fontSize:'3rem',marginBottom:12}},'🧭'),React.createElement('h1',{style:{fontFamily:'Georgia,serif',fontSize:'1.8rem',marginBottom:4}},'Pusula',React.createElement('span',{style:{color:'var(--o)'}},'m'),' ',React.createElement('span',{style:{fontSize:'.9rem',color:'var(--gr)'}},'KOÇ')),React.createElement('input',{className:'inp',value:coachName,onChange:e=>setCoachName(e.target.value),placeholder:'Koç adınız...',style:{marginBottom:16,fontSize:16}}),React.createElement('button',{className:'btn btn-o btn-full',onClick:handleSetup,disabled:!coachName.trim()},'Paneli Başlat →')));
+
+  const active=students[activeIdx];const profil=sd.profil||{};const hedef=sd.hedef||{};const currentName=profil.ad||active?.name||'Öğrenci';
+  const wKey=gwk(wo);const weekData=sd[`week_${wKey}`]||{};const weekDates=gwd(wo);const denemeler=sd.denemeler||[];const uykuLog=sd.uyku_log||{};
+  let weekDone=0,weekTotal=0;weekDates.forEach(d=>{const dk=ldk(d);const dd=weekData[dk]||{};(dd.tasks||[]).forEach((t,i)=>{if(t?.trim()){weekTotal++;if((dd.checks||[])[i])weekDone++;}});});
+  const scores=[];for(let i=-12;i<=0;i++){const wk=gwk(i);const w=sd[`week_${wk}`]||{};if(w.score)scores.push({week:wk,score:w.score});}
+  const TABS=[{id:'ozet',icon:'📊',l:'Özet'},{id:'ai',icon:'🤖',l:'AI Koç'},{id:'plan',icon:'📅',l:'Hafta'},{id:'deneme',icon:'📝',l:'Deneme'},{id:'hedef',icon:'🎯',l:'Hedef'},{id:'gorev',icon:'📤',l:'Görev'},{id:'not',icon:'📋',l:'Notlar'}];
+
+  return React.createElement('div',{style:{minHeight:'100vh',background:'var(--cr)'}},
+    React.createElement('div',{className:'header'},
+      React.createElement('button',{onClick:()=>setSideOpen(!sideOpen),style:{background:'none',border:'none',color:'#fff',fontSize:'1.4rem',cursor:'pointer',padding:'4px 8px'}},'☰'),
+      React.createElement('div',{className:'logo'},'Pusula',React.createElement('span',null,'m'),' ',React.createElement('span',{style:{fontSize:'.6rem',color:'rgba(255,255,255,.4)'}},'KOÇ'),React.createElement('span',{style:{fontSize:'.5rem',marginLeft:6,color:connected?'#22c55e':'#ef4444'}},'●')),
+      React.createElement('div',{style:{display:'flex',gap:6}},
+        React.createElement('button',{onClick:()=>setSharing(true),style:{background:'rgba(255,255,255,.1)',border:'1.5px solid rgba(255,255,255,.2)',color:'#fff',borderRadius:20,padding:'5px 10px',fontWeight:800,fontSize:'.68rem',cursor:'pointer'}},'📤'),
+        React.createElement('button',{onClick:()=>active&&loadData(active),disabled:syncing,style:{background:'rgba(244,123,32,.2)',border:'1.5px solid rgba(244,123,32,.5)',color:'var(--o)',borderRadius:20,padding:'5px 10px',fontWeight:800,fontSize:'.68rem',cursor:'pointer'}},syncing?'⏳':'🔄'))),
+
+    sideOpen&&React.createElement('div',{className:'side-overlay',onClick:()=>setSideOpen(false)}),
+    React.createElement('div',{className:`sidebar ${sideOpen?'open':''}`},React.createElement('div',{style:{padding:16}},
+      React.createElement('div',{style:{fontSize:'.65rem',fontWeight:800,color:'var(--gr)',textTransform:'uppercase',marginBottom:4}},'👤 '+(coach?.name||'Koç')),
+      React.createElement('div',{style:{fontSize:'.68rem',fontWeight:800,color:'var(--gr)',textTransform:'uppercase',marginTop:14,marginBottom:10}},'Öğrencilerim ('+students.length+')'),
+      students.map((s,i)=>React.createElement('div',{key:i,style:{display:'flex',alignItems:'center',gap:4,marginBottom:6}},
+        React.createElement('button',{onClick:()=>{setActiveIdx(i);setWo(0);setSideOpen(false);},style:{flex:1,display:'flex',alignItems:'center',gap:10,padding:'10px 12px',background:activeIdx===i?'var(--o)':'#fff',border:`2px solid ${activeIdx===i?'var(--o)':'#f0e8dc'}`,borderRadius:14,cursor:'pointer',textAlign:'left'}},
+          React.createElement('div',{style:{width:34,height:34,borderRadius:'50%',background:activeIdx===i?'rgba(255,255,255,.2)':'linear-gradient(135deg,var(--o),var(--g))',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,flexShrink:0,fontSize:'.9rem'}},(s.name||'?')[0]),
+          React.createElement('div',{style:{flex:1,minWidth:0}},React.createElement('div',{style:{fontWeight:800,fontSize:'.82rem',color:activeIdx===i?'#fff':'var(--tx)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},s.name))),
+        React.createElement('button',{onClick:e=>{e.stopPropagation();setDeleting(i);},style:{width:32,height:32,borderRadius:10,border:'2px solid #fef2f2',background:'#fef2f2',color:'#ef4444',cursor:'pointer',fontSize:'.8rem',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},'✕'))),
+      React.createElement('div',{style:{display:'flex',gap:8,marginTop:12}},
+        React.createElement('button',{onClick:()=>{setAdding(true);setSideOpen(false);},style:{flex:1,padding:10,border:'2px dashed var(--o)',borderRadius:14,background:'#fff8f0',color:'var(--o)',fontWeight:800,fontSize:'.78rem',cursor:'pointer'}},'+Bağla'),
+        React.createElement('button',{onClick:()=>{setSharing(true);setSideOpen(false);},style:{flex:1,padding:10,border:'2px solid #3b82f6',borderRadius:14,background:'#eff6ff',color:'#2563eb',fontWeight:800,fontSize:'.78rem',cursor:'pointer'}},'📤Davet')))),
+
+    React.createElement('div',{style:{padding:'16px 16px 30px',maxWidth:720,margin:'0 auto'}},
+      !active?React.createElement('div',{style:{textAlign:'center',padding:40}},React.createElement('div',{style:{fontSize:'3rem',marginBottom:16}},'🔗'),React.createElement('div',{style:{fontWeight:700,marginBottom:16}},'Öğrenci bağlayarak başlayın'),React.createElement('div',{style:{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}},React.createElement('button',{className:'btn',onClick:()=>setSharing(true),style:{background:'#3b82f6',color:'#fff'}},'📤 Link'),React.createElement('button',{className:'btn btn-o',onClick:()=>setAdding(true)},'🔗 Bağla'))):
+      React.createElement('div',null,
+        React.createElement('div',{style:{background:'linear-gradient(135deg,#1a1208,#5a3300)',borderRadius:20,padding:'18px 16px',marginBottom:16,color:'#fff'}},
+          React.createElement('div',{style:{display:'flex',justifyContent:'space-between'}},React.createElement('div',null,React.createElement('div',{style:{fontSize:'.72rem',color:'rgba(255,255,255,.4)'}},'Öğrenci'),React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.4rem',fontWeight:900}},currentName)),React.createElement('button',{onClick:()=>setDeleting(activeIdx),style:{background:'rgba(239,68,68,.15)',border:'1.5px solid rgba(239,68,68,.3)',color:'#ef4444',borderRadius:20,padding:'4px 10px',fontWeight:800,fontSize:'.65rem',cursor:'pointer',alignSelf:'flex-start'}},'Çıkar')),
+          React.createElement('div',{style:{display:'flex',gap:6,marginTop:8,flexWrap:'wrap',fontSize:'.72rem'}},profil.sinif&&React.createElement('span',{style:{background:'rgba(244,123,32,.2)',color:'var(--o)',padding:'2px 10px',borderRadius:20,fontWeight:700}},profil.sinif==='mezun'?'Mezun':profil.sinif+'. Sınıf'),hedef.okul&&React.createElement('span',{style:{background:'rgba(212,168,83,.2)',color:'var(--g)',padding:'2px 10px',borderRadius:20,fontWeight:700}},'🎯 '+hedef.okul))),
+        React.createElement('div',{className:'tab-bar'},TABS.map(t=>React.createElement('button',{key:t.id,className:`tab-btn ${tab===t.id?'active':''}`,onClick:()=>setTab(t.id)},t.icon+' '+t.l))),
+
+        tab==='ozet'&&React.createElement('div',null,
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}},
+            [{v:weekDone+'/'+weekTotal,l:'Görev',c:weekDone===weekTotal&&weekTotal?'#22c55e':'var(--o)'},{v:denemeler.length,l:'Deneme',c:'var(--o)'},{v:weekData.score||'-',l:'Puan',c:weekData.score>=8?'#22c55e':'var(--o)'}].map((s,i)=>React.createElement('div',{key:i,className:'card',style:{textAlign:'center',padding:'14px 10px'}},React.createElement('div',{style:{fontSize:'1.4rem',fontWeight:900,color:s.c}},s.v),React.createElement('div',{style:{fontSize:'.6rem',color:'var(--gr)',fontWeight:700,textTransform:'uppercase',marginTop:3}},s.l)))),
+          scores.length>0&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem',color:'var(--o)',marginBottom:10}},'📈 Puanlar'),React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:6,height:70}},scores.map((s,i)=>{const c=s.score>=8?'#22c55e':s.score>=5?'var(--o)':'#ef4444';return React.createElement('div',{key:i,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center'}},React.createElement('div',{style:{fontSize:'.6rem',fontWeight:800,color:c,marginBottom:2}},s.score),React.createElement('div',{style:{width:'100%',height:Math.max(6,(s.score/10)*50),background:c,borderRadius:'4px 4px 2px 2px'}}),React.createElement('div',{style:{fontSize:'.45rem',color:'var(--gr)',marginTop:2}},fmt(s.week)));})))),
+
+        tab==='ai'&&React.createElement(AITab,{sd,name:currentName,coachName:coach?.name,profil,hedef,denemeler,scores,uykuLog,weekData,weekDone,weekTotal,gorevler}),
+
+        tab==='plan'&&React.createElement('div',null,
+          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},React.createElement('button',{onClick:()=>setWo(w=>w-1),style:{width:34,height:34,borderRadius:'50%',border:'2px solid var(--o)',background:'none',color:'var(--o)',fontSize:'1rem',cursor:'pointer',fontWeight:900}},'‹'),React.createElement('div',{style:{fontWeight:800,fontSize:'.85rem'}},fmt(ldk(weekDates[0]))+' – '+fmt(ldk(weekDates[6]))),React.createElement('button',{onClick:()=>setWo(w=>w+1),style:{width:34,height:34,borderRadius:'50%',border:'2px solid var(--o)',background:'none',color:'var(--o)',fontSize:'1rem',cursor:'pointer',fontWeight:900}},'›')),
+          weekData.score&&React.createElement('div',{style:{background:'linear-gradient(135deg,var(--o),var(--g))',borderRadius:14,padding:12,marginBottom:12,color:'#fff',display:'flex',alignItems:'center',gap:12}},React.createElement('div',{style:{width:44,height:44,borderRadius:'50%',background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:'1.2rem'}},weekData.score),React.createElement('div',{style:{fontWeight:800}},'Hafta Puanı')),
+          weekDates.map((date,idx)=>{const dKey=ldk(date);const isT=dKey===ldk(new Date());const dd=weekData[dKey]||{};const tasks=dd.tasks||[];const checks=dd.checks||[];const has=tasks.some(t=>t?.trim());return React.createElement('div',{key:idx,style:{background:'#fff',borderRadius:12,padding:'10px 12px',marginBottom:6,borderLeft:`4px solid ${isT?'var(--o)':has?'var(--g)':'#f0e8dc'}`}},React.createElement('div',{style:{fontWeight:800,fontSize:'.78rem',color:isT?'var(--o)':'var(--tx)',marginBottom:has?5:0}},DAYS[idx]+(isT?' 📍':'')),has?tasks.map((t,ti)=>{if(!t?.trim())return null;const done=checks[ti];return React.createElement('div',{key:ti,style:{display:'flex',alignItems:'center',gap:6,padding:'3px 0'}},React.createElement('div',{style:{width:18,height:18,borderRadius:5,background:done?'#22c55e':'#f0e8dc',color:done?'#fff':'transparent',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.6rem',fontWeight:900,flexShrink:0}},done?'✓':''),React.createElement('div',{style:{fontSize:'.78rem',color:done?'#22c55e':'var(--tx)',textDecoration:done?'line-through':'none',opacity:done?.6:1}},t));}):React.createElement('div',{style:{fontSize:'.7rem',color:'#ddd'}},'—'));})),
+
+        tab==='deneme'&&React.createElement('div',null,denemeler.length===0?React.createElement('div',{style:{textAlign:'center',color:'var(--gr)',padding:30}},'Henüz deneme yok'):
+          [{l:'TYT',d:denemeler.filter(d=>(d.tip||'tyt')==='tyt'),c:'var(--o)',k:['mat','tur','tar','cog','fel','din','fiz','kim','bio']},{l:'AYT',d:denemeler.filter(d=>d.tip==='ayt'),c:'#16a34a',k:['mat','fiz','kim','bio','tdk','tar1','cog1']}].map(sec=>sec.d.length===0?null:React.createElement('div',{key:sec.l},React.createElement('div',{style:{fontWeight:800,fontSize:'.9rem',color:sec.c,marginBottom:10}},sec.l+' ('+sec.d.length+')'),sec.d.map((d,i)=>{let td=0,ty=0;sec.k.forEach(k=>{td+=d.dersler?.[k+'_d']||0;ty+=d.dersler?.[k+'_y']||0;});return React.createElement('div',{key:i,className:'card',style:{borderLeft:`4px solid ${sec.c}`}},React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:6}},React.createElement('div',{style:{fontWeight:800}},sec.l+' #'+(i+1)),React.createElement('div',{style:{fontSize:'.7rem',color:'var(--gr)'}},d.tarih?fmt(d.tarih):'')),React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}},React.createElement('div',{style:{background:'#f0fdf4',borderRadius:8,padding:6,textAlign:'center'}},React.createElement('div',{style:{fontSize:'1.1rem',fontWeight:900,color:'#22c55e'}},td)),React.createElement('div',{style:{background:'#fef2f2',borderRadius:8,padding:6,textAlign:'center'}},React.createElement('div',{style:{fontSize:'1.1rem',fontWeight:900,color:'#ef4444'}},ty)),React.createElement('div',{style:{background:'#fff8f0',borderRadius:8,padding:6,textAlign:'center'}},React.createElement('div',{style:{fontSize:'1.1rem',fontWeight:900,color:sec.c}},calcNet(td,ty)))));})))),
+
+        tab==='hedef'&&React.createElement('div',null,React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--o)',marginBottom:10}},'🎯 Hedef'),[['Sınav',hedef.sinav],['Sıralama',hedef.siralama?'İlk '+hedef.siralama:''],['Okul',hedef.okul],['Bölüm',hedef.bolum]].map(([l,v])=>v?React.createElement('div',{key:l,style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #faf5ee',fontSize:'.82rem'}},React.createElement('span',{style:{color:'var(--gr)'}},l),React.createElement('span',{style:{fontWeight:800}},v)):null)),sd.hayallerim&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--g)',marginBottom:6}},'💭 Hayalleri'),React.createElement('div',{style:{fontSize:'.82rem',lineHeight:1.6,whiteSpace:'pre-line'}},sd.hayallerim))),
+
+        tab==='gorev'&&React.createElement('div',null,
+          React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--o)',marginBottom:12}},'📤 Görev Gönder'),React.createElement('textarea',{className:'textarea',value:taskText,onChange:e=>setTaskText(e.target.value),placeholder:'Görev yaz...',rows:3}),React.createElement('button',{className:'btn btn-o btn-full',style:{marginTop:10,opacity:taskText.trim()?1:.5},onClick:sendTask,disabled:!taskText.trim()},'📤 Gönder')),
+          gorevler.length>0&&React.createElement('div',null,gorevler.map(g=>React.createElement('div',{key:g.id,style:{background:'#fff',borderRadius:12,padding:'10px 12px',marginBottom:6,borderLeft:`4px solid ${g.done?'#22c55e':'var(--o)'}`}},React.createElement('div',{style:{display:'flex',alignItems:'flex-start',gap:8}},React.createElement('button',{onClick:()=>toggleDone(g),style:{width:24,height:24,borderRadius:6,border:`2px solid ${g.done?'#22c55e':'#ddd'}`,background:g.done?'#22c55e':'none',color:g.done?'#fff':'transparent',cursor:'pointer',fontWeight:900,fontSize:'.7rem',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}},g.done?'✓':''),React.createElement('div',{style:{flex:1}},React.createElement('div',{style:{fontSize:'.82rem',fontWeight:600,color:g.done?'#22c55e':'var(--tx)',textDecoration:g.done?'line-through':'none'}},g.text),React.createElement('div',{style:{fontSize:'.62rem',color:'var(--gr)',marginTop:2}},new Date(g.createdAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}))),React.createElement('button',{onClick:()=>delGorev(g),style:{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'.85rem'}},'🗑')))))),
+
+        tab==='not'&&React.createElement('div',null,
+          React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--o)',marginBottom:12}},'📋 Koç Notlarım'),React.createElement('textarea',{className:'textarea',value:coachNote,onChange:e=>setCoachNote(e.target.value),placeholder:'Notlar...',rows:5}),React.createElement('button',{className:'btn btn-o btn-full',style:{marginTop:10},onClick:saveNote},'💾 Kaydet')),
+          sd.notlar&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--g)',marginBottom:6}},'📝 Öğrencinin Notları'),React.createElement('div',{style:{fontSize:'.82rem',lineHeight:1.6,whiteSpace:'pre-line',background:'var(--cr)',borderRadius:10,padding:12}},sd.notlar))))),
+
+    // MODALS
+    adding&&React.createElement('div',{className:'overlay'},React.createElement(AddModal,{onAdd:addStudent,onClose:()=>setAdding(false)})),
+    sharing&&React.createElement('div',{className:'overlay'},React.createElement(ShareModal,{onClose:()=>setSharing(false),savedLink,onSaveLink:l=>{setSavedLink(l);LS.set('app_link',l);}})),
+    deleting!==null&&students[deleting]&&React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(4px)'}},React.createElement('div',{style:{background:'#fff',borderRadius:24,padding:'28px 24px',margin:20,maxWidth:340,width:'100%'}},React.createElement('div',{style:{fontSize:'2rem',textAlign:'center',marginBottom:12}},'⚠️'),React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1rem',fontWeight:700,textAlign:'center',marginBottom:20}},React.createElement('strong',null,students[deleting]?.name),' çıkarılsın mı?'),React.createElement('div',{style:{display:'flex',gap:10}},React.createElement('button',{className:'btn',onClick:()=>setDeleting(null),style:{flex:1,border:'2px solid #f0e8dc',background:'#fff',color:'var(--gr)'}},'Vazgeç'),React.createElement('button',{className:'btn',onClick:()=>removeStudent(deleting),style:{flex:1,background:'#ef4444',color:'#fff'}},'Çıkar')))),
+    React.createElement('div',{className:`toast ${toast?'show':''}`},toast));
+}
+
+// ═══ MODALS ═══
+function AddModal({onAdd,onClose}){
+  const[name,setName]=useState('');const[code,setCode]=useState('');const[secret,setSecret]=useState('');const[loading,setLoading]=useState(false);const[error,setError]=useState('');
+  const connect=async()=>{if(!name.trim()||!code.trim()||!secret.trim()){setError('Tüm alanları doldurun');return;}setLoading(true);setError('');
+    const encKey=secret.trim()+'_'+code.trim().toUpperCase();
+    const reg=await FB.get(`registrations/${code.trim().toUpperCase()}`,encKey);
+    if(!reg){setError('⚠️ Bulunamadı. Kod veya anahtar yanlış.');setLoading(false);return;}
+    onAdd({id:reg.studentId,name:name.trim(),pairCode:code.trim().toUpperCase(),encKey,registeredAt:reg.registeredAt});};
+  return React.createElement('div',{className:'modal'},
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:20}},React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.2rem',fontWeight:700,color:'var(--o)'}},'🔗 Öğrenci Bağla'),React.createElement('button',{onClick:onClose,style:{width:32,height:32,borderRadius:'50%',border:'none',background:'#fff8f0',color:'var(--o)',cursor:'pointer'}},'✕')),
+    React.createElement('div',{style:{background:'#fff8f0',borderRadius:14,padding:14,marginBottom:16,fontSize:'.82rem',lineHeight:1.6,borderLeft:'4px solid var(--o)'}},'Öğrencinizden ',React.createElement('strong',null,'eşleşme kodu'),' ve ',React.createElement('strong',null,'gizli anahtar'),' isteyin.'),
+    [{l:'Öğrenci Adı',v:name,s:setName,p:'Örn: Ahmet'},{l:'Eşleşme Kodu',v:code,s:setCode,p:'XXXX-XXXX',m:1},{l:'Gizli Anahtar',v:secret,s:setSecret,p:'Anahtarı girin',m:1}].map((f,i)=>React.createElement('div',{key:i,style:{marginBottom:14}},React.createElement('label',{className:'label'},f.l),React.createElement('input',{className:'inp',value:f.v,onChange:e=>f.s(e.target.value),placeholder:f.p,style:f.m?{fontFamily:'monospace',letterSpacing:1}:{}}))),
+    error&&React.createElement('div',{style:{color:'#ef4444',fontSize:'.82rem',fontWeight:700,marginBottom:12,textAlign:'center'}},error),
+    React.createElement('button',{className:'btn btn-o btn-full',onClick:connect,disabled:loading,style:{opacity:loading?.6:1}},loading?'Bağlanıyor...':'🔗 Bağlan'));
+}
+
+function ShareModal({onClose,savedLink,onSaveLink}){
+  const[link,setLink]=useState(savedLink||'');const[saved,setSaved]=useState(!!savedLink);const[copied,setCopied]=useState(false);
+  const has=link.trim().length>0;
+  const msg=()=>{let m='🧭 Pusulam\n\nSeni Pusulam\'a davet ediyorum.';if(has)m+='\n\n📲 Aç: '+link.trim();m+='\n\n📌 Adını gir → Kodu ve anahtarı koçuna gönder → Hazır!\n\n— Koçun 🧡';return m;};
+  const cp=()=>{try{navigator.clipboard.writeText(msg());setCopied(true);setTimeout(()=>setCopied(false),2000);}catch{}};
+  return React.createElement('div',{className:'modal'},
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:16}},React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1.2rem',fontWeight:700,color:'var(--o)'}},'📤 Davet'),React.createElement('button',{onClick:onClose,style:{width:32,height:32,borderRadius:'50%',border:'none',background:'#fff8f0',color:'var(--o)',cursor:'pointer'}},'✕')),
+    React.createElement('div',{style:{background:'#fff8f0',borderRadius:16,padding:14,marginBottom:16,borderLeft:'4px solid var(--o)'}},React.createElement('label',{className:'label',style:{color:'var(--o)'}},'📎 Uygulama Linki'),React.createElement('div',{style:{display:'flex',gap:8,marginTop:6}},React.createElement('input',{className:'inp',value:link,onChange:e=>{setLink(e.target.value);setSaved(false);},placeholder:'https://...',style:{fontFamily:'monospace',flex:1}}),React.createElement('button',{className:'btn',onClick:()=>{onSaveLink(link.trim());setSaved(true);},style:{background:saved?'#22c55e':'var(--o)',color:'#fff',padding:'10px 16px',whiteSpace:'nowrap',flexShrink:0}},saved?'✅':'Kaydet'))),
+    React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}},
+      [{fn:()=>window.open('https://wa.me/?text='+encodeURIComponent(msg()),'_blank'),i:'💬',l:'WhatsApp',bg:'#f0fdf4',b:'#22c55e',c:'#16a34a'},{fn:()=>window.open('sms:?body='+encodeURIComponent(msg()),'_blank'),i:'📱',l:'SMS',bg:'#eff6ff',b:'#3b82f6',c:'#2563eb'},{fn:()=>window.open('mailto:?subject='+encodeURIComponent('🧭 Pusulam')+'&body='+encodeURIComponent(msg()),'_blank'),i:'✉️',l:'E-posta',bg:'#fef3c7',b:'#f59e0b',c:'#d97706'},{fn:cp,i:'📋',l:copied?'✅':'Kopyala',bg:'#faf5ff',b:'#8b5cf6',c:'#7c3aed'}].map((b,i)=>React.createElement('button',{key:i,onClick:b.fn,style:{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:14,background:b.bg,border:`2px solid ${b.b}`,borderRadius:16,cursor:'pointer'}},React.createElement('div',{style:{fontSize:'1.8rem'}},b.i),React.createElement('div',{style:{fontWeight:800,fontSize:'.82rem',color:b.c}},b.l)))));
+}
+
+ReactDOM.render(React.createElement(App),document.getElementById('app'));
+</script>
+</body>
+</html>
