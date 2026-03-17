@@ -5,16 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a1208">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Pusulam Koç">
-<link rel="apple-touch-icon" href="koc-icon.png">
-<link rel="icon" type="image/svg+xml" href="koc-icon.svg">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Pusulam – Koç Paneli</title>
+<meta name="apple-mobile-web-app-title" content="Pusulam Koç">
 <link rel="apple-touch-icon" href="koc-icon.png">
 <link rel="icon" type="image/png" href="koc-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Pusulam Koç">
+<title>Pusulam – Koç Paneli</title>
 <style>
 :root{--o:#F47B20;--g:#D4A853;--dk:#1a1208;--cr:#fdf8f2;--tx:#3d2c10;--gr:#8a7a6a;--sh:0 4px 20px rgba(244,123,32,.1)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -53,10 +48,6 @@ button,input,textarea,select{font-family:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 
 <script>
-// ╔═══════════════════════════════════════════════════════════╗
-// ║  FIREBASE CONFIG — KENDİ BİLGİLERİNİZİ GİRİN            ║
-// ║  (Öğrenci uygulamasıyla AYNI config olmalı!)              ║
-// ╚═══════════════════════════════════════════════════════════╝
 const firebaseConfig = {
   apiKey: "AIzaSyBLdrgo3zC1Fij3kOqA11hzm-nDZ0q2lnM",
   authDomain: "pusulam-a883b.firebaseapp.com",
@@ -73,9 +64,6 @@ const db = firebase.database();
 <script type="text/babel">
 const {useState,useEffect,useCallback}=React;
 
-// ═══════════════════════════════════════════════════════════
-// ŞİFRELEME & FIREBASE
-// ═══════════════════════════════════════════════════════════
 const SALT="pusulam2026";
 function xorEnc(t,key){const k=key+SALT;let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return btoa(unescape(encodeURIComponent(r)));}
 function xorDec(e,key){try{const k=key+SALT;const t=decodeURIComponent(escape(atob(e)));let r="";for(let i=0;i<t.length;i++)r+=String.fromCharCode(t.charCodeAt(i)^k.charCodeAt(i%k.length));return r;}catch{return null;}}
@@ -94,9 +82,6 @@ function ldk(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0
 function fmt(s){return new Date(s+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});}
 function calcNet(d,y){return+(d-y/3).toFixed(2);}
 
-// ═══════════════════════════════════════════════════════════
-// ÖĞRENCİ VERİSİ YÜKLEME (Firebase'den şifreli okuma)
-// ═══════════════════════════════════════════════════════════
 async function fetchStudent(stu){
   if(!stu?.id||!stu?.encKey)return{};
   return await FB.get(`students/${stu.id}`,stu.encKey)||{};
@@ -108,9 +93,6 @@ async function fetchTasks(stu){
   return Object.entries(data).map(([id,t])=>({...t,id,_key:id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
 
-// ═══════════════════════════════════════════════════════════
-// AI KOÇ
-// ═══════════════════════════════════════════════════════════
 function AITab({sd,name,coachName,profil,hedef,denemeler,scores,uykuLog,weekData,weekDone,weekTotal,gorevler}){
   const[res,setRes]=useState(null);const[loading,setLoading]=useState(false);const[active,setActive]=useState(null);const[customQ,setCustomQ]=useState("");const[hist,setHist]=useState([]);
   const ctx=()=>{let c=`Öğrenci: ${name}\n`;if(profil.sinif)c+=`Sınıf: ${profil.sinif==='mezun'?'Mezun':profil.sinif+'. Sınıf'}\n`;if(hedef.okul)c+=`Hedef: ${hedef.okul}${hedef.bolum?' / '+hedef.bolum:''}\n`;if(hedef.siralama)c+=`Sıralama: İlk ${hedef.siralama}\n`;c+=`Hafta: ${weekDone}/${weekTotal} görev`;if(weekData.score)c+=`, Puan: ${weekData.score}/10`;if(scores.length)c+=`\nPuanlar: ${scores.map(s=>s.score).join(',')} Ort:${(scores.reduce((a,b)=>a+b.score,0)/scores.length).toFixed(1)}`;if(weekData.summary)c+=`\nÖzet: ${weekData.summary}`;
@@ -132,9 +114,6 @@ function AITab({sd,name,coachName,profil,hedef,denemeler,scores,uykuLog,weekData
     hist.length>1&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,fontSize:'.82rem',color:'var(--gr)',marginBottom:10}},'📜 Önceki'),hist.slice(1).map((h,i)=>React.createElement('button',{key:i,onClick:()=>setRes(h),style:{width:'100%',textAlign:'left',background:'var(--cr)',borderRadius:12,padding:'10px 14px',marginBottom:6,border:'none',cursor:'pointer'}},React.createElement('div',{style:{fontWeight:700,fontSize:'.78rem',color:'var(--o)'}},labels[h.type]),React.createElement('div',{style:{fontSize:'.72rem',color:'var(--tx)',marginTop:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},h.text.slice(0,80)+'...')))));
 }
 
-// ═══════════════════════════════════════════════════════════
-// ANA UYGULAMA
-// ═══════════════════════════════════════════════════════════
 function App(){
   const[phase,setPhase]=useState('loading');
   const[coach,setCoach]=useState(null);const[students,setStudents]=useState([]);
@@ -162,7 +141,6 @@ function App(){
 
   useEffect(()=>{if(phase==='app'&&students[activeIdx])loadData(students[activeIdx]);},[phase,activeIdx,students]);
 
-  // Realtime listener for student data
   useEffect(()=>{
     if(phase!=='app'||!students[activeIdx])return;
     const stu=students[activeIdx];
@@ -180,7 +158,6 @@ function App(){
   const sendTask=async()=>{
     const stu=students[activeIdx];if(!taskText.trim()||!stu)return;
     const tid='t_'+Date.now();const task={id:tid,text:taskText.trim(),createdAt:new Date().toISOString(),done:false,sentBy:coach?.name||'Koç'};
-    // Mevcut görevleri al, yenisini ekle, toplu yaz
     const existing=await FB.get(`tasks/${stu.id}`,stu.encKey)||{};
     existing[tid]=task;
     await FB.set(`tasks/${stu.id}`,existing,stu.encKey);
@@ -253,14 +230,12 @@ function App(){
           React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--o)',marginBottom:12}},'📋 Koç Notlarım'),React.createElement('textarea',{className:'textarea',value:coachNote,onChange:e=>setCoachNote(e.target.value),placeholder:'Notlar...',rows:5}),React.createElement('button',{className:'btn btn-o btn-full',style:{marginTop:10},onClick:saveNote},'💾 Kaydet')),
           sd.notlar&&React.createElement('div',{className:'card'},React.createElement('div',{style:{fontWeight:800,color:'var(--g)',marginBottom:6}},'📝 Öğrencinin Notları'),React.createElement('div',{style:{fontSize:'.82rem',lineHeight:1.6,whiteSpace:'pre-line',background:'var(--cr)',borderRadius:10,padding:12}},sd.notlar))))),
 
-    // MODALS
     adding&&React.createElement('div',{className:'overlay'},React.createElement(AddModal,{onAdd:addStudent,onClose:()=>setAdding(false)})),
     sharing&&React.createElement('div',{className:'overlay'},React.createElement(ShareModal,{onClose:()=>setSharing(false),savedLink,onSaveLink:l=>{setSavedLink(l);LS.set('app_link',l);}})),
     deleting!==null&&students[deleting]&&React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(4px)'}},React.createElement('div',{style:{background:'#fff',borderRadius:24,padding:'28px 24px',margin:20,maxWidth:340,width:'100%'}},React.createElement('div',{style:{fontSize:'2rem',textAlign:'center',marginBottom:12}},'⚠️'),React.createElement('div',{style:{fontFamily:'Georgia,serif',fontSize:'1rem',fontWeight:700,textAlign:'center',marginBottom:20}},React.createElement('strong',null,students[deleting]?.name),' çıkarılsın mı?'),React.createElement('div',{style:{display:'flex',gap:10}},React.createElement('button',{className:'btn',onClick:()=>setDeleting(null),style:{flex:1,border:'2px solid #f0e8dc',background:'#fff',color:'var(--gr)'}},'Vazgeç'),React.createElement('button',{className:'btn',onClick:()=>removeStudent(deleting),style:{flex:1,background:'#ef4444',color:'#fff'}},'Çıkar')))),
     React.createElement('div',{className:`toast ${toast?'show':''}`},toast));
 }
 
-// ═══ MODALS ═══
 function AddModal({onAdd,onClose}){
   const[name,setName]=useState('');const[code,setCode]=useState('');const[secret,setSecret]=useState('');const[loading,setLoading]=useState(false);const[error,setError]=useState('');
   const connect=async()=>{if(!name.trim()||!code.trim()||!secret.trim()){setError('Tüm alanları doldurun');return;}setLoading(true);setError('');
