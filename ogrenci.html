@@ -500,7 +500,22 @@ body{font-family:'Nunito',sans-serif;background:var(--cream);color:var(--text);m
     <button onclick="konuPlanKapat()" style="width:100%;margin-top:16px;padding:12px;border:2px solid #f0e8dc;border-radius:50px;background:white;font-family:'Nunito',sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;color:var(--gray)">Vazgeç</button>
   </div>
 </div>
-
+<div id="gorevPlanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:white;border-radius:28px 28px 0 0;padding:24px 20px 40px;width:100%;max-height:85vh;overflow-y:auto;animation:slideUp .3s ease">
+    <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--orange);margin-bottom:4px">📅 Plana Ekle</div>
+    <div id="gorevPlanGorevMetni" style="font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:16px;line-height:1.4;background:var(--light-orange);padding:10px 14px;border-radius:12px;border-left:3px solid var(--orange)"></div>
+    <div id="gorevPlanAdim1">
+      <div style="font-size:.75rem;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Hangi haftaya eklensin?</div>
+      <div id="gorevPlanHaftalar" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div id="gorevPlanAdim2" style="display:none">
+      <button onclick="gorevPlanGeriDon()" style="background:none;border:none;color:var(--orange);font-family:'Nunito',sans-serif;font-weight:800;font-size:.85rem;cursor:pointer;padding:0;margin-bottom:12px">← Haftayı değiştir</button>
+      <div id="gorevPlanHaftaBaslik" style="font-size:.75rem;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px"></div>
+      <div id="gorevPlanGunler" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <button onclick="gorevPlanKapat()" style="width:100%;margin-top:16px;padding:12px;border:2px solid #f0e8dc;border-radius:50px;background:white;font-family:'Nunito',sans-serif;font-weight:800;font-size:.9rem;cursor:pointer;color:var(--gray)">Vazgeç</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -529,16 +544,29 @@ let _cTasks=[];
 function listenTasks(){
   if(!syncCfg)return;
   fbDb.ref('tasks/'+syncCfg.studentId).on('value',snap=>{
-    const enc=snap.val();
-    if(!enc){_cTasks=[];updTaskUI();return;}
+    const val=snap.val();
+    if(!val){_cTasks=[];updTaskUI();return;}
     try{
-      const d=xD(enc,syncCfg.encKey);
-      if(d){_cTasks=Object.entries(d).map(([id,t])=>({...t,id})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));}
-      else _cTasks=[];
-    }catch{_cTasks=[];}
+      if(typeof val==='string'){
+        const dec=xD(val,syncCfg.encKey);
+        if(dec){
+          const parsed=JSON.parse(dec);
+          _cTasks=Object.entries(parsed)
+            .map(([id,t])=>({...t,id}))
+            .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+        } else _cTasks=[];
+      } else if(typeof val==='object'){
+        _cTasks=Object.entries(val)
+          .map(([id,t])=>({...t,id}))
+          .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      } else _cTasks=[];
+    }catch(e){
+      console.error('listenTasks hata:',e);
+      _cTasks=[];
+    }
     updTaskUI();
   });
-}
+}    
 
 function gorevPlanaEkle(text){
   const dates=getWeekDates(0);
@@ -589,7 +617,7 @@ function updTaskUI(){
         +'<div style="font-size:.88rem;font-weight:700;color:#3d2c10;'+(localDone?'text-decoration:line-through;color:#8a7a6a;':'')+'">'+t.text+'</div>'
         +'<div style="font-size:.7rem;color:#8a7a6a;margin-top:3px">'+(t.sentBy||'')+' · '+new Date(t.createdAt).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'
         +'</div></div>'
-        +'<button id="planbtn_'+tid+'" onclick="planaEkleBtn(\''+tid+'\',\''+safeText+'\')" style="margin-top:8px;background:#F47B20;color:white;border:none;border-radius:20px;padding:6px 16px;font-size:.75rem;font-weight:800;cursor:pointer;font-family:inherit">📅 Plana Ekle</button>'
+        +'<button id="planbtn_'+tid+'" onclick="gorevPlanlaModal(\''+tid+'\',\''+safeText+'\')" style="margin-top:8px;background:#F47B20;color:white;border:none;border-radius:20px;padding:6px 16px;font-size:.75rem;font-weight:800;cursor:pointer;font-family:inherit">📅 Plana Ekle</button>'
         +'</div>';
     });
   }
@@ -606,12 +634,85 @@ function updTaskUI(){
   ls.innerHTML=h;
 }
 
-function planaEkleBtn(taskId,text){
-  gorevPlanaEkle(text);
-  var btn=document.getElementById('planbtn_'+taskId);
-  if(btn){btn.textContent='✅ Eklendi';btn.style.background='#22c55e';btn.style.pointerEvents='none';}
+let _gorevPlanPending=null;
+
+function gorevPlanlaModal(taskId,taskText){
+  _gorevPlanPending={taskId,taskText,secilenOffset:null};
+  document.getElementById('gorevPlanGorevMetni').textContent=taskText;
+  document.getElementById('gorevPlanAdim1').style.display='block';
+  document.getElementById('gorevPlanAdim2').style.display='none';
+  const haftalarEl=document.getElementById('gorevPlanHaftalar');
+  haftalarEl.innerHTML='';
+  for(let offset=0;offset<=8;offset++){
+    const dates=getWeekDates(offset);
+    const wKey=getWeekKey(offset);
+    const wd=DATA.get('week_'+wKey)||{};
+    const fmt=d=>d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+    let bos=0;
+    dates.forEach(date=>{
+      const dd=wd[localDateKey(date)]||{};
+      const tasks=dd.tasks||[];
+      tasks.forEach(t=>{if(!t||!t.trim())bos++;});
+      bos+=Math.max(0,6-tasks.length);
+    });
+    const btn=document.createElement('button');
+    btn.onclick=()=>gorevPlanHaftaSec(offset);
+    btn.style.cssText=`width:100%;padding:12px 16px;border-radius:14px;border:2px solid ${offset===0?'var(--orange)':'#f0e8dc'};background:${offset===0?'var(--light-orange)':'white'};font-family:'Nunito',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;margin-bottom:6px`;
+    btn.innerHTML=`<div><div style="font-weight:800;font-size:.9rem;color:var(--text)">${offset===0?'📍 Bu Hafta':offset===1?'➡️ Gelecek Hafta':offset+'. Hafta İlerisi'}</div><div style="font-size:.75rem;color:var(--gray);margin-top:2px">${fmt(dates[0])} – ${fmt(dates[6])}</div></div><div style="font-size:.72rem;font-weight:700;color:${bos===0?'#ef4444':bos<7?'var(--orange)':'#22c55e'}">${bos===0?'🔴 Dolu':bos+' boş slot'}</div>`;
+    haftalarEl.appendChild(btn);
+  }
+  document.getElementById('gorevPlanModal').style.display='flex';
 }
 
+function gorevPlanHaftaSec(offset){
+  _gorevPlanPending.secilenOffset=offset;
+  const dates=getWeekDates(offset);
+  const today=localDateKey(new Date());
+  const wKey=getWeekKey(offset);
+  const wd=DATA.get('week_'+wKey)||{};
+  const fmt=d=>d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
+  document.getElementById('gorevPlanAdim1').style.display='none';
+  document.getElementById('gorevPlanAdim2').style.display='block';
+  document.getElementById('gorevPlanHaftaBaslik').textContent=`${fmt(dates[0])} – ${fmt(dates[6])} · Hangi gün?`;
+  document.getElementById('gorevPlanGunler').innerHTML=dates.map((date,idx)=>{
+    const dKey=localDateKey(date);
+    const dd=wd[dKey]||{tasks:[],checks:[]};
+    const doluSlot=(dd.tasks||[]).filter(t=>t&&t.trim()).length;
+    const dolu=doluSlot>=6;
+    const isToday=dKey===today;
+    const gecmis=date<new Date(new Date().setHours(0,0,0,0));
+    return`<button ${dolu?'':`onclick="gorevGunSec('${dKey}')"`} style="width:100%;padding:12px 16px;border-radius:14px;border:2px solid ${isToday?'var(--orange)':'#f0e8dc'};background:${isToday?'var(--light-orange)':dolu?'#fafafa':'white'};font-family:'Nunito',sans-serif;cursor:${dolu?'not-allowed':'pointer'};display:flex;align-items:center;justify-content:space-between;opacity:${gecmis&&!isToday?.55:1}"><div style="display:flex;align-items:center;gap:10px"><span>${isToday?'📍':'📅'}</span><div style="text-align:left"><div style="font-weight:800;font-size:.9rem;color:${dolu?'var(--gray)':'var(--text)'}">${DAYS[idx]}${isToday?' (Bugün)':''}</div><div style="font-size:.75rem;color:var(--gray)">${date.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</div></div></div><div style="font-size:.75rem;font-weight:700;color:${dolu?'#ef4444':doluSlot>0?'var(--orange)':'#22c55e'}">${dolu?'🔴 Dolu':doluSlot>0?doluSlot+'/6 görev':'Boş'}</div></button>`;
+  }).join('');
+}
+
+function gorevGunSec(dKey){
+  if(!_gorevPlanPending)return;
+  const{taskId,taskText,secilenOffset}=_gorevPlanPending;
+  const offset=secilenOffset??0;
+  const wKey=getWeekKey(offset);
+  const wd=DATA.get('week_'+wKey)||{};
+  if(!wd[dKey])wd[dKey]={tasks:['','','','','',''],checks:[false,false,false,false,false,false]};
+  const tasks=wd[dKey].tasks;
+  while(tasks.length<6)tasks.push('');
+  const bos=tasks.findIndex(t=>!t||!t.trim());
+  if(bos===-1){showToast('⚠️ Bu günde boş slot yok');gorevPlanKapat();return;}
+  tasks[bos]=taskText;
+  DATA.set('week_'+wKey,wd);
+  const btn=document.getElementById('planbtn_'+taskId);
+  if(btn){btn.textContent='✅ Eklendi';btn.style.background='#22c55e';btn.style.pointerEvents='none';}
+  gorevPlanKapat();
+  showToast(`✅ ${new Date(dKey+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'})} planına eklendi!`);
+}
+
+function gorevPlanGeriDon(){
+  document.getElementById('gorevPlanAdim1').style.display='block';
+  document.getElementById('gorevPlanAdim2').style.display='none';
+}
+
+function gorevPlanKapat(){
+  document.getElementById('gorevPlanModal').style.display='none';
+  _gorevPlanPending=null;
+}
 function toggleCTDone(taskId){
   var current=DATA.get('ctDone_'+taskId)===true;
   DATA.set('ctDone_'+taskId,!current);
